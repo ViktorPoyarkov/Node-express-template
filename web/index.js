@@ -5,6 +5,7 @@ import serveStatic from 'serve-static';
 
 import shopify from './shopify.js';
 import webhooks from './webhooks.js';
+import {createOrUpdateCart} from "./database.js";
 
 const PORT = parseInt(process.env.BACKEND_PORT || process.env.PORT, 10);
 
@@ -27,16 +28,20 @@ app.post(
 	// @ts-ignore
 	shopify.processWebhooks({ webhookHandlers: webhooks })
 );
-
+app.use(express.json());
 // All endpoints after this point will require an active session
 app.use('/api/*', shopify.validateAuthenticatedSession());
 
-app.use(express.json());
+app.post('/save-your-cart', (req, res) => {
+	createOrUpdateCart(req.body.customerId, JSON.stringify(req.body.cart));
+	res.json({status: 'ok'})
+});
 
 app.use(serveStatic(STATIC_PATH, { index: false }));
 
 app.use('/*', shopify.ensureInstalledOnShop(), async (_req, res) => {
 	return res.set('Content-Type', 'text/html').send(readFileSync(join(STATIC_PATH, 'index.html')));
 });
-
 app.listen(PORT);
+console.log(PORT);
+
